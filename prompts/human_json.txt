@@ -1,0 +1,7 @@
+Please write the first three words that come to mind when you read the cue word below.
+Repeat this {{nsets}} times so we get {{nsets}} separate sets.
+
+Cue: {{cue}}
+
+Return JSON exactly like:
+{"sets":[["w1","w2","w3"], ... {{nsets}} arrays total ]}
