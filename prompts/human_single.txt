@@ -1,7 +1,0 @@
-Please write the first three words that come to mind when you read the cue word below.
-Keep each answer short.
-
-Cue: {{cue}}
-
-Return JSON exactly like:
-{"sets":[["w1","w2","w3"]]}

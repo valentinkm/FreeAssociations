@@ -57,7 +57,7 @@ def call_model(cue: str, n_sets: int, prompt_key: str, retry=False):
         presence_penalty=CFG["presence_penalty"],
         max_tokens=MAX_TOKENS,
         messages=msgs,
-        response_format={"type": "json_object"},  # nudge to JSON
+        response_format={"type": "json_object"},
     )
     if prompt_key == "chatml_func":
         kw["functions"] = [FUNC_SCHEMA(n_sets)]
@@ -75,14 +75,12 @@ def call_model(cue: str, n_sets: int, prompt_key: str, retry=False):
            else choice.message.content)
     _log_reply(raw)
 
-    # ---------- if raw is None or '', escalate ----------
     if not raw:
         if prompt_key != "chatml_func" and not retry:
             print("⚠️  Empty payload – retrying via function_call")
             return call_model(cue, n_sets, "chatml_func", retry=True)
         raise RuntimeError("Received empty payload twice.")
 
-    # ---------- parse / repair / fallback ---------------
     try:
         return json.loads(raw)["sets"][:n_sets]
     except JSONDecodeError:
@@ -103,9 +101,9 @@ def generate_and_save(out_path: str, seed: int | None = None):
     cues = pd.read_csv(DATA_PATH)["cue"].dropna().unique()
     sample = random.sample(list(cues), k=CFG["num_cues"])
 
-    single = CFG["calls_per_cue"] == 1
-    prompt_key = "human_single" if single else CFG["prompt"]
-    chunk = 1 if single else CFG["calls_per_cue"]
+    # ALWAYS use the prompt from CFG, never hard-coded “human_single”
+    prompt_key = CFG["prompt"]
+    chunk = CFG["calls_per_cue"]
     chunks = ceil(TOTAL_SETS / chunk)
 
     with open(out_path, "w", encoding="utf-8") as fw:
@@ -116,22 +114,22 @@ def generate_and_save(out_path: str, seed: int | None = None):
                 try:
                     sets_acc.extend(call_model(cue, batch, prompt_key))
                 except RuntimeError as e:
-                    # empty payload twice – back‑off and retry once
-                    print(f"⚠️  {cue}: {e}  – waiting 2 s then retrying once")
+                    print(f"⚠️  {cue}: {e}  – waiting 2 s then retrying once")
                     time.sleep(2)
                     try:
                         sets_acc.extend(call_model(cue, batch, prompt_key, retry=True))
                     except RuntimeError:
                         print(f"⏭️  Skipping cue '{cue}' after repeated empty payloads")
-                        break   # move on to next cue
+                        break
 
-            if sets_acc:   # only write if we obtained at least one batch
-                fw.write(json.dumps({"cue": cue,
-                                     "sets": sets_acc,
-                                     "cfg":  CFG}) + "\n")
+            if sets_acc:
+                fw.write(json.dumps({
+                    "cue": cue,
+                    "sets": sets_acc,
+                    "cfg": CFG
+                }) + "\n")
 
-    print(f"✅ Done — wrote {len(sample)} cues (some may be skipped) × ≤{TOTAL_SETS} sets")
-
+    print(f"✅ Done — wrote {len(sample)} cues × ≤{TOTAL_SETS} sets")
 
 # ── CLI ------------------------------------------------------------------
 if __name__ == "__main__":

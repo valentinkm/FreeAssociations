@@ -1,4 +1,3 @@
-# src/sweep.py
 #!/usr/bin/env python3
 """
 sweep.py  – grid / random sweep launcher
@@ -7,10 +6,12 @@ sweep.py  – grid / random sweep launcher
 Reads SEARCH_SPACE from settings.py, mutates CFG in‑place, and calls
 run_lm.generate_and_save for each unique parameter combo.
 """
-import itertools, hashlib, json, os, datetime as dt
+import itertools, hashlib, json, datetime as dt
 from pathlib import Path
+
 from .settings import CFG, SEARCH_SPACE
-from .run_lm   import generate_and_save
+from .run_lm    import generate_and_save
+from .prompt_loader import TEMPLATES
 
 RUN_DIR = Path("runs")
 RUN_DIR.mkdir(exist_ok=True)
@@ -26,10 +27,13 @@ def all_combinations(space: dict):
 
 def main():
     for overrides in all_combinations(SEARCH_SPACE):
-        # ----- apply overrides to global CFG -----
+        prompt_key = overrides.get("prompt")
+        if prompt_key not in TEMPLATES:
+            print(f"⚠️  Prompt template '{prompt_key}' not found in prompts/ – skipping")
+            continue
+
         CFG.update(overrides)
 
-        # produce a hash that represents this exact setting
         h = cfg_hash(CFG)
         out_path = RUN_DIR / f"grid_{h}.jsonl"
 
