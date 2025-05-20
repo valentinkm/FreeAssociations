@@ -1,13 +1,12 @@
 # src/prompt_loader.py
 from pathlib import Path
 
-# Load all prompt templates once
+# Load all prompt templates once.
+# Normalize keys by replacing '-' → '_'
 TEMPLATES = {
-    "human_single": Path("prompts/human_single.txt").read_text(),
-    "human_json":   Path("prompts/human_json.txt").read_text(),
-    "chatml_func":  Path("prompts/chatml_func.txt").read_text(),
+    p.stem.replace("-", "_"): p.read_text()
+    for p in Path("prompts").glob("*.txt")
 }
-
 
 def render_prompt(tpl: str, cue: str, n: int) -> str:
     return tpl.replace("{{cue}}", cue).replace("{{nsets}}", str(n))

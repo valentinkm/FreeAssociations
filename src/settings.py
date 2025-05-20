@@ -1,38 +1,31 @@
 # src/settings.py
-# -------------------------------------------------
-#  ❖ SINGLE‑RUN CFG
-# -------------------------------------------------
+
+# ─────────── GLOBAL CFG ───────────
 CFG = {
     "model":             "gpt-4.1-nano",
-    "temperature":       1.3,
+    "temperature":       1.1,            # locked for prompt sweep
     "top_p":             1.0,
     "frequency_penalty": 0.0,
     "presence_penalty":  0.0,
 
-    # prompt key used only when calls_per_cue > 1
-    "prompt": "human_json",      # or "chatml_func"
-
-    "calls_per_cue": 1,          # 1 → 10 single prompts ; >1 → batch size
-    "num_cues": 5,
+    "calls_per_cue":     1,              # single-call only
+    "prompt":            "descriptive_context",  # overridden by sweep
+    "num_cues":          5,              # how many cues to sample
 }
 
-# -------------------------------------------------
-#  ❖ SWEEP search space
-# -------------------------------------------------
+# ─────────── PROMPT-ENGINEERING SWEEP ───────────
 SEARCH_SPACE = {
-    "model":             ["gpt-4.1-nano"],
-    "temperature":       [0.7, 1.1, 1.5],
-    "top_p":             [1.0, 0.95],
-    "frequency_penalty": [0.0, 0.3],
-    "presence_penalty":  [0.0, 0.6],
-    "calls_per_cue":     [1, 5, 10],     # batch size; total sets always 10
-    "prompt":            ["human_json", "chatml_func"],
+    "prompt": [
+        "descriptive_context",
+        "instructional",        # instead of instructional_format
+        "creativity_boost",
+        "memory",               # instead of memory_only
+        "categroy_anchor",      # spelling as-is, or fix both sides
+        "chain_of_thought",
+    ]
 }
 
-# -------------------------------------------------
-#  ❖ CONSTANTS
-# -------------------------------------------------
+# ─────────── CONSTANTS ───────────
 TOTAL_SETS = 10
 MAX_TOKENS = 180
-N_CUES      = 500
-DATA_PATH   = "Small World of Words/SWOW-EN.R100.20180827.csv"
+DATA_PATH  = "Small World of Words/SWOW-EN.R100.20180827.csv"
