@@ -1,7 +1,5 @@
-model,temperature,top_p,frequency_penalty,presence_penalty,calls_per_cue,prompt,num_cues,hash,jaccard,recall10,ent_gap
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,chain_of_thought,5,0902fa49,0.059,1.0,2.7464
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,creativity_boost,5,fbd05784,0.0229,0.6,1.8979
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,5,2b5e477a,0.0785,1.0,2.9818
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,categroy_anchor,5,a8704c21,0.036,0.8,2.2516
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,instructional,5,b7481418,0.0921,1.0,3.0863
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,memory,5,f06121f0,0.0843,1.0,3.0865
+model,temperature,top_p,frequency_penalty,presence_penalty,calls_per_cue,prompt,demographic,num_cues,hash,jaccard,recall10,ent_gap
+gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_65+,5,568befd4,0.1225,0.8,1.3815
+gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_25-34,5,7273f5f9,0.104,1.0,1.7729
+gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_35-49,5,895091c1,0.0511,0.8,1.3212
+gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_50-64,5,d93542ce,0.1231,1.0,1.427

@@ -1,0 +1,4 @@
+# Perspective wrapper
+You are answering as a typical participant **younger than 25**.
+
+{{BASE_PROMPT}}
