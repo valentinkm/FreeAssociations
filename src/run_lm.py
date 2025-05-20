@@ -2,8 +2,7 @@
 """
 run_lm.py – robust generator of TOTAL_SETS free associations per cue
 """
-import time
-import json, textwrap, random, re, datetime as dt
+import time, json, textwrap, random, re, datetime as dt
 from math import ceil
 from pathlib import Path
 from json.decoder import JSONDecodeError
@@ -11,14 +10,16 @@ from json.decoder import JSONDecodeError
 import pandas as pd
 from openai import OpenAI
 
-from .settings import CFG, TOTAL_SETS, MAX_TOKENS, DATA_PATH
-from .prompt_loader import render_prompt, TEMPLATES, FUNC_SCHEMA
+from .settings      import CFG, TOTAL_SETS, MAX_TOKENS, DATA_PATH
+# ──────────────────────────────── NEW ↓ ─────────────────────────────────
+from .prompt_loader import get_prompt, render_prompt, FUNC_SCHEMA
+# (TEMPLATES is no longer needed here.)
 
 client = OpenAI()
 
 # ── helpers ---------------------------------------------------------------
 def _log_prompt(cue, n_sets, prompt):
-    print(f"\n🟦 PROMPT | cue={cue!r} n_sets={n_sets}\n"
+    print(f"\n🟦 PROMPT | cue={cue!r}  n_sets={n_sets}  demographic={CFG['demographic']}\n"
           + textwrap.indent(prompt, "   "))
 
 def _log_reply(txt):
@@ -42,7 +43,9 @@ def _repair_json(txt):
 
 # ── single call with retries ---------------------------------------------
 def call_model(cue: str, n_sets: int, prompt_key: str, retry=False):
-    user_msg = render_prompt(TEMPLATES[prompt_key], cue, n_sets)
+    # --- build user prompt -----------------------------------------------
+    base_tpl = get_prompt(prompt_key, CFG["demographic"])          # ← uses new helper
+    user_msg = render_prompt(base_tpl, cue, n_sets)
     _log_prompt(cue, n_sets, user_msg)
 
     msgs = [
@@ -101,10 +104,9 @@ def generate_and_save(out_path: str, seed: int | None = None):
     cues = pd.read_csv(DATA_PATH)["cue"].dropna().unique()
     sample = random.sample(list(cues), k=CFG["num_cues"])
 
-    # ALWAYS use the prompt from CFG, never hard-coded “human_single”
     prompt_key = CFG["prompt"]
-    chunk = CFG["calls_per_cue"]
-    chunks = ceil(TOTAL_SETS / chunk)
+    chunk      = CFG["calls_per_cue"]
+    chunks     = ceil(TOTAL_SETS / chunk)
 
     with open(out_path, "w", encoding="utf-8") as fw:
         for cue in sample:
@@ -119,14 +121,14 @@ def generate_and_save(out_path: str, seed: int | None = None):
                     try:
                         sets_acc.extend(call_model(cue, batch, prompt_key, retry=True))
                     except RuntimeError:
-                        print(f"⏭️  Skipping cue '{cue}' after repeated empty payloads")
+                        print(f"⏭️  Skipping cue '{cue}' after repeated failures")
                         break
 
             if sets_acc:
                 fw.write(json.dumps({
                     "cue": cue,
                     "sets": sets_acc,
-                    "cfg": CFG
+                    "cfg":  CFG                 # now includes 'demographic'
                 }) + "\n")
 
     print(f"✅ Done — wrote {len(sample)} cues × ≤{TOTAL_SETS} sets")

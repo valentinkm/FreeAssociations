@@ -1,5 +1,3 @@
-# src/settings.py
-
 # ─────────── GLOBAL CFG ───────────
 CFG = {
     "model":             "gpt-4.1-nano",
@@ -10,6 +8,7 @@ CFG = {
 
     "calls_per_cue":     1,              # single-call only
     "prompt":            "descriptive_context",  # overridden by sweep
+    "demographic":       "all",          # ← NEW default bucket
     "num_cues":          5,              # how many cues to sample
 }
 
@@ -17,12 +16,23 @@ CFG = {
 SEARCH_SPACE = {
     "prompt": [
         "descriptive_context",
-        "instructional",        # instead of instructional_format
+        "instructional_format",
         "creativity_boost",
-        "memory",               # instead of memory_only
-        "categroy_anchor",      # spelling as-is, or fix both sides
+        "memory_only",
+        "category_anchor",
         "chain_of_thought",
-    ]
+    ],
+    "demographic": [
+        "all",
+        "age_<25",
+        "age_25-34",
+        "age_35-49",
+        "age_50-64",
+        "age_65+",
+        "gender_f",
+        "gender_m",
+        "gender_other",
+    ],
 }
 
 # ─────────── CONSTANTS ───────────
