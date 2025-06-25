@@ -1,5 +1,0 @@
-model,temperature,top_p,frequency_penalty,presence_penalty,calls_per_cue,prompt,demographic,num_cues,hash,jaccard,recall10,ent_gap
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_65+,5,568befd4,0.1225,0.8,1.3815
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_25-34,5,7273f5f9,0.104,1.0,1.7729
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_35-49,5,895091c1,0.0511,0.8,1.3212
-gpt-4.1-nano,1.1,1.0,0.0,0.0,1,descriptive_context,age_50-64,5,d93542ce,0.1231,1.0,1.427
