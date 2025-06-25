@@ -1,4 +1,0 @@
-Be as creative and novel as possible when generating associations for "{{cue}}".
-Produce {{nsets}} independent set(s) of three one‐word responses.
-Output ONLY valid JSON:
-{"sets":[["x","y","z"]]}

@@ -1,0 +1,3 @@
+What are the very first three words that pop into your mind when you think of “{{cue}}”?  
+Don’t overthink it.  
+Return only: word1, word2, word3

@@ -1,4 +1,0 @@
-First identify the broad semantic category of "{{cue}}", then list three words within that category.
-Repeat independently {{nsets}} time(s).
-Format:
-{"sets":[["w1","w2","w3"]]}

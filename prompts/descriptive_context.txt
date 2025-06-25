@@ -1,9 +1,0 @@
-You are participating in a psychological free‐association study.
-When you read the cue word "{{cue}}", immediately write the first three words that come to mind.
-Perform this task independently {{nsets}} time(s) to generate {{nsets}} set(s) of three associations.
-Format your output exactly as valid JSON:
-{
-  "sets": [
-    ["word1","word2","word3"]
-  ]
-}

@@ -1,4 +1,0 @@
-Step 1: State the semantic category of "{{cue}}".
-Step 2: Generate three one‐word associations.
-Do this for {{nsets}} sets and return ONLY the associations in JSON:
-{"sets":[["a1","a2","a3"]]}
