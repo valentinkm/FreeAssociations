@@ -1,0 +1,5 @@
+You are participating in an online word-association study.
+
+Quick — write down the first three words that come to mind when you see “{{cue}}”.  
+Don’t overthink it.  
+Return only: word1, word2, word3

@@ -1,0 +1,5 @@
+You are participating in an online word-association study.
+
+Recall the first three personal associations that come to mind when you see “{{cue}}”.  
+Each should be a single word.
+Return only: word1, word2, word3

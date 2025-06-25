@@ -1,0 +1,1 @@
+What three single-word responses would a typical human give for “{{cue}}”? Return only: word1, word2, word3
