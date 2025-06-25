@@ -55,12 +55,12 @@ def extract_all_profiles(top_countries: int | None):
     """
     Mines unique demographic profiles from the SWOW dataset and saves them to a CSV file.
     """
-    print(f"🔄 Reading SWOW data from {settings.SWOW_COMPLETE_DATA_PATH.name}...")
+    print(f"🔄 Reading SWOW data from {settings.SWOW_DATA_PATH.name}...")
     try:
         usecols = ["age", "gender", "nativeLanguage", "country", "education"]
-        df = pd.read_csv(settings.SWOW_COMPLETE_DATA_PATH, usecols=lambda c: c in usecols)
+        df = pd.read_csv(settings.SWOW_DATA_PATH, usecols=lambda c: c in usecols)
     except FileNotFoundError:
-        print(f"❌ ERROR: Could not find SWOW data at {settings.SWOW_COMPLETE_DATA_PATH}")
+        print(f"❌ ERROR: Could not find SWOW data at {settings.SWOW_DATA_PATH}")
         return
 
     df.dropna(subset=["age", "gender", "nativeLanguage", "country"], inplace=True)
