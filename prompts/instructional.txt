@@ -1,6 +1,0 @@
-Follow these steps for cue "{{cue}}":
-1. Think of three one‐word associations.
-2. List them in order of immediacy.
-Repeat for {{nsets}} time(s).
-Return exactly:
-{"sets":[["a","b","c"]]}

@@ -1,0 +1,5 @@
+You are participating in an online word-association study.
+
+What are the first three words that come to mind when you think of “{{cue}}”?  
+Use mostly single words.  
+Return only: word1, word2, word3

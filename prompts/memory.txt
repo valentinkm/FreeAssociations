@@ -1,3 +1,0 @@
-Rely solely on your internal knowledge—do NOT access external data.
-For cue "{{cue}}", generate {{nsets}} set(s) of three one‐word free associations.
-Return a JSON object with a single key "sets".
