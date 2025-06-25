@@ -1,51 +1,99 @@
-#!/usr/bin/env python3
 """
-sweep.py  – grid / random sweep launcher
----------------------------------------
+settings.py
+───────────
+Central configuration for the project.
 
-Reads SEARCH_SPACE from settings.py, mutates CFG in-place, and calls
-run_lm.generate_and_save for each unique parameter combo.
+This file manages file paths, model parameters, and experiment settings.
+It ensures that all other modules can access consistent configuration
+and that data/output directories are handled correctly.
 """
-import itertools, hashlib, json, datetime as dt
 from pathlib import Path
 
-from .settings      import CFG, SEARCH_SPACE
-from .run_lm        import generate_and_save
-from .prompt_loader import TEMPLATES   # just for sanity-check
+# --- Core Project Paths ---
+# The root of the project is the directory containing 'main.py' and 'src/'.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-RUN_DIR = Path("runs")
-RUN_DIR.mkdir(exist_ok=True)
+# --- Input Data Paths ---
+DATA_DIR = PROJECT_ROOT / "data"
+SWOW_DIR = DATA_DIR / "SWOW"
+SPP_DIR = DATA_DIR / "SPP" # Renamed from 'generalize_spp'
+PROMPTS_DIR = PROJECT_ROOT / "prompts"
 
-def cfg_hash(cfg: dict) -> str:
-    """Deterministic 8-char hash for the current cfg."""
-    return hashlib.md5(json.dumps(cfg, sort_keys=True).encode()).hexdigest()[:8]
+# Specific data files
+SPP_DATA_PATH = SPP_DIR / "spp_naming_data_raw.xlsx"
+SWOW_DATA_PATH = SWOW_DIR / "SWOW-EN.R100.20180827.csv"
+SWOW_COMPLETE_DATA_PATH = SWOW_DIR / "SWOW-EN.complete.20180827.csv"
 
-def all_combinations(space: dict):
-    keys, vals = zip(*space.items())
-    for combo in itertools.product(*vals):
-        yield dict(zip(keys, combo))
+# --- Output Paths ---
+OUTPUTS_DIR = PROJECT_ROOT / "outputs"
+RUNS_DIR = OUTPUTS_DIR / "runs"
+PLOTS_DIR = OUTPUTS_DIR / "plots"
+LEXICONS_DIR = OUTPUTS_DIR / "lexicons"
 
-def main():
-    for overrides in all_combinations(SEARCH_SPACE):
-        prompt_key   = overrides.get("prompt")
-        demographic  = overrides.get("demographic", "all")
+# Specific output files
+LEXICON_PATH = LEXICONS_DIR / "llm_association_lexicon.jsonl"
+PLOT_HOLISTIC_PATH = PLOTS_DIR / "spp_holistic_similarity_analysis.png"
+PLOT_HUMAN_BASELINE_PATH = PLOTS_DIR / "spp_human_baseline_analysis.png"
+YOKED_DIR = RUNS_DIR / "yoked_generation"
+PROFILES_PATH = OUTPUTS_DIR / "demographic_profiles.csv"
 
-        # Skip missing base prompt templates early
-        if prompt_key not in TEMPLATES:
-            print(f"⚠️  Prompt template '{prompt_key}' not found – skipping")
-            continue
 
-        CFG.update(overrides)
+# --- LLM & Analysis Configuration ---
+CFG = {
+    # Model parameters
+    "model": "gpt-4-turbo", # Using a more modern default
+    "temperature": 1.1,
+    "top_p": 1.0,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+    "max_tokens": 180,
 
-        h = cfg_hash(CFG)
-        out_path = RUN_DIR / f"grid_{h}.jsonl"
+    # Experiment parameters
+    "prompt": "participant_default_question", # Default prompt template
+    "demographic": "all", # Default demographic profile
+    "num_cues": 10, # Number of cues to test in sweeps
+    "sets_total": 5, # Default triples per cue
+}
 
-        if out_path.exists():
-            print(f"⚠️  {out_path.name} exists – skipping")
-            continue
+# --- Prompt Engineering Sweep Configuration ---
+SEARCH_SPACE = {
+    "prompt": [
+        "default_question",
+        "default_imperative",
+        "intuition_question",
+        "intuition_imperative",
+        "experiential_question",
+        "experiential_imperative",
+        "participant_default_question",
+        "participant_default_imperative",
+        "participant_intuition_question",
+        "participant_intuition_imperative",
+        "participant_experiential_question",
+        "participant_experiential_imperative",
+    ],
+    "demographic": ["all"],
+}
 
-        print(f"▶️  {overrides}")
-        generate_and_save(str(out_path))
+# --- SPP Analysis Constants ---
+SPP_CONSTANTS = {
+    "NUM_PAIRS_TO_PROBE": 50,
+    "RANDOM_SEED": 42,
+    "RELATED_COND": 1,
+    "UNRELATED_COND": 2,
+    "NUM_SETS_PER_WORD": 25, # For lexicon generation
+}
 
-if __name__ == "__main__":
-    main()
+# --- Initialization Function (This is what main.py needs) ---
+def initialize_project_paths():
+    """
+    Creates all necessary output directories if they don't exist.
+    This function should be called once at the start of any script.
+    """
+    print("Initializing project directories...")
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    RUNS_DIR.mkdir(exist_ok=True)
+    PLOTS_DIR.mkdir(exist_ok=True)
+    LEXICONS_DIR.mkdir(exist_ok=True)
+    YOKED_DIR.mkdir(exist_ok=True)
+    print("✅ Directories initialized.")
+

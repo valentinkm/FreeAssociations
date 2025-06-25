@@ -1,38 +1,44 @@
+"""
+settings.py
+───────────
+Global configuration (CFG) plus the SEARCH_SPACE the sweep iterates over.
+"""
+
 # ─────────── GLOBAL CFG ───────────
 CFG = {
     "model":             "gpt-4.1-nano",
-    "temperature":       1.1,            # locked for prompt sweep
+    "temperature":       1.1,
     "top_p":             1.0,
-    "frequency_penalty": 0.0,
+    "frequency_penalty": 0.0, 
     "presence_penalty":  0.0,
 
-    "calls_per_cue":     1,              # single-call only
-    "prompt":            "descriptive_context",  # overridden by sweep
-    "demographic":       "all",          # ← NEW default bucket
-    "num_cues":          5,              # how many cues to sample
+    "calls_per_cue":     1, # number of calls to make per cue
+    "prompt":            "descriptive_context", # prompt template to use
+    "demographic":       "all", # demographic profile to use
+    "num_cues":          5, # number of cues to test
+    "sets_total":        1, # default triplet responses per cue
 }
 
 # ─────────── PROMPT-ENGINEERING SWEEP ───────────
 SEARCH_SPACE = {
     "prompt": [
-        "descriptive_context",
-        "instructional_format",
-        "creativity_boost",
-        "memory_only",
-        "category_anchor",
-        "chain_of_thought",
+        # plain role
+        "default_question",
+        "default_imperative",
+        "intuition_question",
+        "intuition_imperative",
+        "experiential_question",
+        "experiential_imperative",
+        "participant_default_question",
+        "participant_default_imperative",
+        "participant_intuition_question",
+        "participant_intuition_imperative",
+        "participant_experiential_question",
+        "participant_experiential_imperative",
     ],
-    "demographic": [
-        "all",
-        "age_<25",
-        "age_25-34",
-        "age_35-49",
-        "age_50-64",
-        "age_65+",
-        "gender_f",
-        "gender_m",
-        "gender_other",
-    ],
+
+    # demographic axis
+    "demographic": ["all"],
 }
 
 # ─────────── CONSTANTS ───────────

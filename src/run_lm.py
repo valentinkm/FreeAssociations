@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
 """
-run_lm.py – robust generator of TOTAL_SETS free associations per cue
+run_lm.py – generator of free-association triples (zero-shot version)
+
+(v2 - Refactored to handle looping internally and accept num_sets_to_generate)
 """
-import time, json, textwrap, random, re, datetime as dt
-from math import ceil
+import time
+import json
+import textwrap
+import random
+import re
+import datetime as dt
 from pathlib import Path
 from json.decoder import JSONDecodeError
+import argparse
 
 import pandas as pd
 from openai import OpenAI
 
-from .settings      import CFG, TOTAL_SETS, MAX_TOKENS, DATA_PATH
-# ──────────────────────────────── NEW ↓ ─────────────────────────────────
-from .prompt_loader import get_prompt, render_prompt, FUNC_SCHEMA
-# (TEMPLATES is no longer needed here.)
+from .settings import CFG, MAX_TOKENS, DATA_PATH
+from .prompt_loader import get_prompt, render_prompt
 
 client = OpenAI()
 
-# ── helpers ---------------------------------------------------------------
+# --- Internal helper for making a single API call ---
 def _log_prompt(cue, n_sets, prompt):
-    print(f"\n🟦 PROMPT | cue={cue!r}  n_sets={n_sets}  demographic={CFG['demographic']}\n"
-          + textwrap.indent(prompt, "   "))
+    print(f"\n🟦 PROMPT | cue={cue!r}  n_sets={n_sets}  "
+          f"demographic={CFG['demographic']}\n" + textwrap.indent(prompt, "   "))
 
 def _log_reply(txt):
-    if not txt:
-        print("🟥 REPLY  | <None>")
-    else:
-        print(f"🟩 REPLY  | {' '.join(txt.split())[:200]}…")
+    tag = "🟥" if not txt else "🟩"
+    preview = "<None>" if not txt else ' '.join(txt.split())[:200] + "…"
+    print(f"{tag} REPLY  | {preview}")
 
-def _repair_json(txt):
+def _repair_json(txt: str | None):
     if not txt:
         return None
     m = re.search(r'\]\s*\}', txt)
@@ -40,62 +44,83 @@ def _repair_json(txt):
         except JSONDecodeError:
             pass
     return None
+    
+def _call_single_set(cue: str, prompt_key: str):
+    base_tpl = get_prompt(prompt_key, CFG["demographic"])
+    # The user-facing prompt should always ask for one set of three words.
+    # <<< FIX: Changed keyword argument from n_sets=1 to n=1 >>>
+    user_msg = render_prompt(base_tpl, cue, n=1)
 
-# ── single call with retries ---------------------------------------------
-def call_model(cue: str, n_sets: int, prompt_key: str, retry=False):
-    # --- build user prompt -----------------------------------------------
-    base_tpl = get_prompt(prompt_key, CFG["demographic"])          # ← uses new helper
-    user_msg = render_prompt(base_tpl, cue, n_sets)
-    _log_prompt(cue, n_sets, user_msg)
+    _log_prompt(cue, n_sets=1, prompt=user_msg)
 
-    msgs = [
-        {"role": "system", "content": "Return ONLY valid JSON."},
-        {"role": "user",   "content": user_msg},
-    ]
-    kw = dict(
+    rsp = client.chat.completions.create(
         model=CFG["model"],
         temperature=CFG["temperature"],
         top_p=CFG["top_p"],
         frequency_penalty=CFG["frequency_penalty"],
         presence_penalty=CFG["presence_penalty"],
         max_tokens=MAX_TOKENS,
-        messages=msgs,
+        messages=[
+            {"role": "system", "content": "Return ONLY valid JSON."},
+            {"role": "user",   "content": user_msg},
+        ],
         response_format={"type": "json_object"},
     )
-    if prompt_key == "chatml_func":
-        kw["functions"] = [FUNC_SCHEMA(n_sets)]
 
-    rsp = client.chat.completions.create(**kw)
     if not rsp.choices:
-        if not retry:
-            print("⚠️  Empty choices – retrying once")
-            return call_model(cue, n_sets, prompt_key, retry=True)
-        raise RuntimeError("OpenAI returned no choices twice.")
+        raise RuntimeError("Empty choices")
 
     choice = rsp.choices[0]
-    raw = (choice.message.function_call.arguments
-           if choice.finish_reason == "function_call"
-           else choice.message.content)
+    raw = choice.message.content
     _log_reply(raw)
 
     if not raw:
-        if prompt_key != "chatml_func" and not retry:
-            print("⚠️  Empty payload – retrying via function_call")
-            return call_model(cue, n_sets, "chatml_func", retry=True)
-        raise RuntimeError("Received empty payload twice.")
+        raise RuntimeError("Empty payload")
 
+    # This parsing logic is kept from the original for compatibility
     try:
-        return json.loads(raw)["sets"][:n_sets]
-    except JSONDecodeError:
+        data = json.loads(raw)
+        if isinstance(data, dict) and "sets" in data:
+            return data["sets"]
+        if isinstance(data, dict):
+            keys = sorted(data.keys(), key=lambda k: (len(k), k))
+            return [[data[k] for k in keys][:3]]
+        if isinstance(data, str):
+            return [data.strip().split(",")[:3]]
+        raise KeyError("Unrecognised reply structure")
+    except (JSONDecodeError, KeyError) as e:
         repaired = _repair_json(raw)
         if repaired:
-            return json.loads(repaired)["sets"][:n_sets]
-        if prompt_key != "chatml_func" and not retry:
-            print("⚠️  Parse failed – retrying via function_call")
-            return call_model(cue, n_sets, "chatml_func", retry=True)
-        raise
+            return json.loads(repaired)["sets"]
+        raise RuntimeError(f"Failed to parse model reply: {e}")
 
-# ── outer loop -----------------------------------------------------------
+# --- Main public function ---
+def call_model(cue: str, prompt_key: str, num_sets_to_generate: int) -> list:
+    """
+    Generates a specified number of association sets for a cue by calling
+    the LLM in a loop.
+    """
+    all_sets = []
+    # Set the prompt key in the global CFG for the internal function
+    CFG['prompt'] = prompt_key
+
+    # The main loop now lives here, where it belongs.
+    for _ in range(num_sets_to_generate):
+        try:
+            single_set = _call_single_set(cue, prompt_key)
+            if single_set:
+                all_sets.extend(single_set)
+            # A small delay to avoid hitting rate limits on rapid calls
+            time.sleep(0.1)
+        except RuntimeError as e:
+            # Log the error but continue trying to get the other sets
+            print(f"⚠️  Error on cue '{cue}': {e} – skipping one attempt")
+            continue
+            
+    return all_sets
+
+# Note: The original generate_and_save and CLI logic are kept for compatibility
+# with the 'sweep.py' script.
 def generate_and_save(out_path: str, seed: int | None = None):
     if seed is not None:
         random.seed(seed)
@@ -104,43 +129,30 @@ def generate_and_save(out_path: str, seed: int | None = None):
     cues = pd.read_csv(DATA_PATH)["cue"].dropna().unique()
     sample = random.sample(list(cues), k=CFG["num_cues"])
 
-    prompt_key = CFG["prompt"]
-    chunk      = CFG["calls_per_cue"]
-    chunks     = ceil(TOTAL_SETS / chunk)
-
     with open(out_path, "w", encoding="utf-8") as fw:
         for cue in sample:
-            sets_acc = []
-            while len(sets_acc) < TOTAL_SETS:
-                batch = min(chunk, TOTAL_SETS - len(sets_acc))
-                try:
-                    sets_acc.extend(call_model(cue, batch, prompt_key))
-                except RuntimeError as e:
-                    print(f"⚠️  {cue}: {e}  – waiting 2 s then retrying once")
-                    time.sleep(2)
-                    try:
-                        sets_acc.extend(call_model(cue, batch, prompt_key, retry=True))
-                    except RuntimeError:
-                        print(f"⏭️  Skipping cue '{cue}' after repeated failures")
-                        break
-
+            # This now correctly calls the looping function
+            sets_acc = call_model(
+                cue=cue,
+                prompt_key=CFG["prompt"],
+                num_sets_to_generate=CFG["sets_total"]
+            )
             if sets_acc:
                 fw.write(json.dumps({
-                    "cue": cue,
+                    "cue":  cue,
                     "sets": sets_acc,
-                    "cfg":  CFG                 # now includes 'demographic'
+                    "cfg":  CFG,
                 }) + "\n")
+            else:
+                print(f"⏭️  No sets for cue '{cue}' – not writing")
 
-    print(f"✅ Done — wrote {len(sample)} cues × ≤{TOTAL_SETS} sets")
+    print(f"✅ Done — wrote {len(sample)} cues")
 
-# ── CLI ------------------------------------------------------------------
+
 if __name__ == "__main__":
-    import argparse
     p = argparse.ArgumentParser()
-    p.add_argument("outfile", nargs="?", default=None,
-                   help="Path for JSONL output")
-    p.add_argument("--seed", type=int, default=None,
-                   help="Random seed for cue sampling")
+    p.add_argument("outfile", nargs="?", default=None)
+    p.add_argument("--seed", type=int, default=None)
     args = p.parse_args()
 
     out = args.outfile or f"runs/lm_{dt.datetime.now():%Y%m%d_%H%M%S}.jsonl"
