@@ -11,7 +11,6 @@ from tqdm import tqdm
 
 from . import settings
 from .prompt_loader import get_prompt, render_prompt
-# <<< CHANGE: Import the new model interface >>>
 from .model_interface import get_model_associations
 
 def _log_prompt(cue, prompt):
@@ -36,11 +35,15 @@ def generate_lexicon_data(vocabulary: set, model_name: str, lexicon_path: Path, 
     with open(lexicon_path, "a", encoding="utf-8") as f:
         for word in tqdm(sorted(list(vocabulary)), desc="Building Lexicon"):
             try:
-                prompt_for_call = render_prompt(base_prompt, word, n=nsets)
-                _log_prompt(word, prompt_for_call)
+                prompt_for_instruct_models = render_prompt(base_prompt, word, n=nsets)
+                _log_prompt(word, prompt_for_instruct_models)
                 
-                # <<< CHANGE: Call the unified interface >>>
-                response_data = get_model_associations(prompt_for_call, model_name)
+                response_data = get_model_associations(
+                    instruct_prompt=prompt_for_instruct_models,
+                    model_name=model_name,
+                    cue_word=word,
+                    nsets=nsets
+                )
                 _log_reply(response_data)
 
                 if response_data and "sets" in response_data:

@@ -72,7 +72,6 @@ def get_3tt_data_for_analysis(lexicon_path: Path, num_triplets_to_probe: int):
     """
     print(f"\n--- Loading and sampling {num_triplets_to_probe} 3TT triplets ---")
     try:
-        # <<< FIX: Removed the old, incorrect loading logic. This is the only file needed. >>>
         all_triplets_df = pd.read_csv(settings.TTT_RESULTS_PATH)
     except FileNotFoundError as e:
         print(f"❌ ERROR: Could not find 3TT data file at '{settings.TTT_RESULTS_PATH}'. Details: {e}")
@@ -89,7 +88,6 @@ def get_3tt_data_for_analysis(lexicon_path: Path, num_triplets_to_probe: int):
         all_triplets_df['choiceB']
     )
 
-    # --- Now apply the same sampling logic as SPP ---
     print(f"Checking existing words in '{lexicon_path.name}'...")
     processed_words = set()
     if lexicon_path.exists():
