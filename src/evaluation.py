@@ -35,7 +35,6 @@ def _entropy(cnt):
 
 # --- Prompt Sweep Evaluation ---
 def evaluate_prompt_sweep():
-    # This function remains the same
     print("\n--- Evaluating Prompt Sweep Results ---")
     if not settings.RUNS_DIR.exists():
         print("❌ 'runs' directory not found. No data to evaluate.")
@@ -184,12 +183,11 @@ def evaluate_yoked_steering():
             country_order = ["United States", "UK & Ireland", "Canada", "Europe"]
             order = [c for c in country_order if c in axis_data['subgroup'].unique()]
 
-        # Plot the individual data points (the "rain")
+        # Plot the individual data points
         sns.stripplot(data=axis_data, x='subgroup', y='Alignment', hue='Model Type', ax=ax, order=order,
                       jitter=0.2, dodge=True, alpha=0.1, palette=palette, legend=False)
 
         # Plot the mean markers
-        # <<< FIX: Removed the invalid 'legend=False' argument >>>
         sns.pointplot(data=axis_data, x='subgroup', y='Alignment', hue='Model Type', ax=ax, order=order,
                       dodge=0.4, join=False, errwidth=0, markers="s", scale=1.0, palette=palette)
 
@@ -198,7 +196,6 @@ def evaluate_yoked_steering():
         ax.set_ylabel('Alignment (W. Jaccard)' if i == 0 else '')
         ax.tick_params(axis='x', rotation=45, labelsize=9)
         
-        # Manually create a clean legend for the first plot
         if i == 0:
             from matplotlib.lines import Line2D
             custom_handles = [Line2D([0], [0], marker='s', color='w', label='Steered Mean', markerfacecolor=palette['Steered'], markersize=10),
