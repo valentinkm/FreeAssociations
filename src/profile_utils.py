@@ -57,8 +57,9 @@ def extract_all_profiles(top_countries: int | None):
     """
     print(f"🔄 Reading SWOW data from {settings.SWOW_DATA_PATH.name}...")
     try:
+        # FIX: Load all necessary columns to prevent KeyErrors
         usecols = ["age", "gender", "nativeLanguage", "country", "education"]
-        df = pd.read_csv(settings.SWOW_DATA_PATH, usecols=lambda c: c in usecols)
+        df = pd.read_csv(settings.SWOW_DATA_PATH, usecols=usecols)
     except FileNotFoundError:
         print(f"❌ ERROR: Could not find SWOW data at {settings.SWOW_DATA_PATH}")
         return

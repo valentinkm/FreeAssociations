@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.append(str(PROJECT_ROOT))
 
 try:
-    from src import settings, data_utils, llm_generation, analysis, generalizability, profile_utils, experiment_runners, evaluation
+    from src import settings, data_utils, llm_generation, generalizability, profile_utils, experiment_runners, evaluation
 except ImportError as e:
     print(f"Error: Could not import necessary modules from 'src'. Details: {e}")
     print("Please ensure you have run 'pip install google-generativeai openai pandas seaborn matplotlib statsmodels tqdm'")
@@ -50,7 +50,7 @@ def main():
 
     args = parser.parse_args()
     
-    settings.CFG['verbose'] = args.verbose if 'verbose' in args else False
+    settings.CFG['verbose'] = args.verbose if hasattr(args, 'verbose') else False
     settings.initialize_project_paths()
 
     if args.command == "generalize":
@@ -69,12 +69,16 @@ def handle_generalize(args):
     if args.type == 'spp':
         data, vocab = data_utils.get_spp_data_for_analysis(lexicon_path, args.ncues)
         vocab_needed_for_force = set(data['prime'].str.lower()).union(set(data['target'].str.lower())) if data is not None else set()
-    else:  # 3tt
+    else:
         data, vocab = data_utils.get_3tt_data_for_analysis(lexicon_path, args.ncues)
         vocab_needed_for_force = set(data['cue'].str.lower()).union(set(data['choiceA'].str.lower())).union(set(data['choiceB'].str.lower())) if data is not None else set()
+    
     if data is None: return
+
     if vocab or args.force_generate:
-        llm_generation.generate_lexicon_data(vocab if not args.force_generate else vocab_needed_for_force, args.model, lexicon_path, args.nsets, args.prompt)
+        vocab_to_run = vocab_needed_for_force if args.force_generate else vocab
+        llm_generation.generate_lexicon_data(vocab_to_run, args.model, lexicon_path, args.nsets, args.prompt)
+    
     if args.type == 'spp':
         generalizability.analyze_holistic_similarity(data, lexicon_path)
     else:
@@ -95,7 +99,7 @@ def handle_evaluate(args):
     elif args.type == "model-comparison":
         generalizability.compare_models_on_task(task=args.task)
     elif args.type == "model-alignment":
-        analysis.compare_model_alignment(models=args.models, nsets=args.nsets, ncues=args.ncues)
+        generalizability.compare_model_alignment(models=args.models, nsets=args.nsets, ncues=args.ncues)
 
 def handle_extract_profiles(args):
     profile_utils.extract_all_profiles(top_countries=args.top_countries if args.top_countries > 0 else None)

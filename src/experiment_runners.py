@@ -17,6 +17,7 @@ from . import settings
 from .model_interface import get_model_associations
 from .prompt_loader import get_prompt, render_prompt, TEMPLATES
 from .profile_utils import age_bin, norm_gender, native_bin, edu_bin, slugify
+from .llm_generation import _log_prompt, _log_reply
 
 # --- Prompt Sweep Experiment Runner ---
 def run_sweep(model_name: str, nsets: int, ncues: int):
@@ -53,7 +54,14 @@ def run_sweep(model_name: str, nsets: int, ncues: int):
             for cue in tqdm(sample_cues, desc=f"Prompt: {prompt_key}"):
                 try:
                     prompt_for_call = render_prompt(base_prompt, cue, n=nsets)
-                    response_data = get_model_associations(prompt_for_call, model_name)
+                    _log_prompt(cue, prompt_for_call)
+                    response_data = get_model_associations(
+                        instruct_prompt=prompt_for_call,
+                        model_name=model_name,
+                        cue_word=cue,
+                        nsets=nsets
+                    )
+                    _log_reply(response_data)
                     if response_data and "sets" in response_data:
                         fw.write(json.dumps({"cue": cue, "sets": response_data["sets"], "cfg": run_config}) + "\n")
                 except Exception as e:
@@ -70,7 +78,6 @@ PROFILE_TEMPLATE = """You are answering in english in a study as a typical parti
 • Education: {{education}}
 
 {{BASE_PROMPT}}"""
-
 def _build_steered_prompt(profile_id: str, base_prompt_text: str) -> str:
     """Manually builds the final steered prompt from a profile_id."""
     try:
@@ -96,7 +103,7 @@ def run_yoked_generation(model_name: str, ncues: int, nsets: int):
     except FileNotFoundError:
         print(f"❌ ERROR: Cannot find SWOW data at '{settings.SWOW_DATA_PATH}'")
         return
-
+        
     df.dropna(subset=['cue', 'age', 'gender', 'nativeLanguage', 'country', 'education'], inplace=True)
     df['age_bin'] = df['age'].apply(age_bin)
     df['gender_bin'] = df['gender'].apply(norm_gender)
@@ -104,19 +111,17 @@ def run_yoked_generation(model_name: str, ncues: int, nsets: int):
     df['education_bin'] = df['education'].apply(edu_bin)
     df['native_bin'] = df['nativeLanguage'].apply(native_bin)
     df['profile_id'] = ("profile_age_" + df["age_bin"] + "_gender_" + df["gender_bin"] + "_native_" + df["native_bin"] + "_country_" + df["country_bin"] + "_edu_" + df["education_bin"])
-
     profiles_by_cue = df.groupby('cue')['profile_id'].apply(list).to_dict()
     all_cues = random.sample(list(profiles_by_cue.keys()), k=min(ncues, len(profiles_by_cue)))
     
     print(f"✅ Plan created. Will run on {len(all_cues)} cues.")
-
+    
     def get_processed_cues(path):
         if not path.exists(): return set()
         with open(path, 'r') as f: return {json.loads(line)['cue'] for line in f if line.strip()}
     
     processed_steered = get_processed_cues(settings.YOKED_STEERED_PATH)
     processed_nonsteered = get_processed_cues(settings.YOKED_NONSTEERED_PATH)
-
     base_prompt_text = TEMPLATES[settings.GENERALIZE_DEFAULTS['prompt']]
     
     print("\n🔄 Step 2: Generating yoked LLM responses...")
@@ -124,36 +129,45 @@ def run_yoked_generation(model_name: str, ncues: int, nsets: int):
     with open(settings.YOKED_STEERED_PATH, "a") as f_steered:
         for cue in tqdm(all_cues, desc="Steered Runs"):
             if cue in processed_steered: continue
-            
             all_sets_for_cue = []
             for profile_id in profiles_by_cue[cue]:
                 try:
                     full_prompt = _build_steered_prompt(profile_id, base_prompt_text)
                     prompt_for_call = render_prompt(full_prompt, cue, n=1)
-                    response_data = get_model_associations(prompt_for_call, model_name)
+                    _log_prompt(cue, prompt_for_call)
+                    response_data = get_model_associations(
+                        instruct_prompt=prompt_for_call,
+                        model_name=model_name,
+                        cue_word=cue,
+                        nsets=1
+                    )
+                    _log_reply(response_data)
                     if response_data and "sets" in response_data:
                         all_sets_for_cue.append({"profile_id": profile_id, "set": response_data["sets"][0]})
                 except Exception as e:
                     tqdm.write(f"❌ Steered ERROR on cue '{cue}' with profile '{profile_id}': {e}")
-
             if all_sets_for_cue:
                 f_steered.write(json.dumps({"cue": cue, "responses": all_sets_for_cue}) + "\n")
 
     with open(settings.YOKED_NONSTEERED_PATH, "a") as f_nonsteered:
         for cue in tqdm(all_cues, desc="Non-Steered Runs"):
             if cue in processed_nonsteered: continue
-            
             all_sets_for_cue = []
             for _ in range(nsets):
                 try:
                     prompt_for_call = render_prompt(base_prompt_text, cue, n=1)
-                    response_data = get_model_associations(prompt_for_call, model_name)
+                    _log_prompt(cue, prompt_for_call)
+                    response_data = get_model_associations(
+                        instruct_prompt=prompt_for_call,
+                        model_name=model_name,
+                        cue_word=cue,
+                        nsets=1
+                    )
+                    _log_reply(response_data)
                     if response_data and "sets" in response_data:
                         all_sets_for_cue.append({"profile_id": "all", "set": response_data["sets"][0]})
                 except Exception as e:
                     tqdm.write(f"❌ Non-steered ERROR on cue '{cue}': {e}")
-            
             if all_sets_for_cue:
                 f_nonsteered.write(json.dumps({"cue": cue, "responses": all_sets_for_cue}) + "\n")
-
     print("\n--- Yoked Run Complete ---")

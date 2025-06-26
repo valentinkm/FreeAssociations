@@ -12,7 +12,6 @@ from pathlib import Path
 from . import settings
 
 # --- SPP Data Loading ---
-
 def _prepare_spp_data(spp_path):
     """Internal helper to load and process SPP data."""
     df = pd.read_excel(spp_path)
@@ -30,11 +29,18 @@ def _prepare_spp_data(spp_path):
     related_pairs = df[df['primecond'] == 1][['prime', 'target']].drop_duplicates()
     return pd.merge(related_pairs, priming_effects, on='target')
 
-def get_spp_data_for_analysis(lexicon_path: Path, num_pairs_to_probe: int):
+def get_spp_data_for_analysis(lexicon_path: Path = None, num_pairs_to_probe: int = 50):
     """Samples SPP pairs and identifies the vocabulary needed for LLM generation."""
     print(f"\n--- Sampling {num_pairs_to_probe} SPP pairs ---")
     all_pairs_df = _prepare_spp_data(settings.SPP_DATA_PATH)
     
+    # If no lexicon path is provided, just sample the data and return the full vocab needed.
+    if lexicon_path is None:
+        sampled_df = all_pairs_df.sample(n=min(num_pairs_to_probe, len(all_pairs_df)), random_state=settings.GENERALIZE_DEFAULTS['random_seed'])
+        full_vocab = set(sampled_df['prime'].str.lower()).union(set(sampled_df['target'].str.lower()))
+        return sampled_df, full_vocab
+
+    # If a lexicon path is provided, check for existing words.
     print(f"Checking existing words in '{lexicon_path.name}'...")
     processed_words = set()
     if lexicon_path.exists():
@@ -64,12 +70,8 @@ def get_spp_data_for_analysis(lexicon_path: Path, num_pairs_to_probe: int):
     return sampled_pairs_df, vocabulary_to_generate
 
 # --- 3TT Data Loading ---
-
-def get_3tt_data_for_analysis(lexicon_path: Path, num_triplets_to_probe: int):
-    """
-    Loads and samples 3TT data from the Results Summary file and identifies
-    the vocabulary needed for LLM generation.
-    """
+def get_3tt_data_for_analysis(lexicon_path: Path = None, num_triplets_to_probe: int = 50):
+    """Loads and samples 3TT data and identifies the vocabulary needed for LLM generation."""
     print(f"\n--- Loading and sampling {num_triplets_to_probe} 3TT triplets ---")
     try:
         all_triplets_df = pd.read_csv(settings.TTT_RESULTS_PATH)
@@ -77,16 +79,16 @@ def get_3tt_data_for_analysis(lexicon_path: Path, num_triplets_to_probe: int):
         print(f"❌ ERROR: Could not find 3TT data file at '{settings.TTT_RESULTS_PATH}'. Details: {e}")
         return None, None
     
-    # Clean column names and drop rows with missing essential data
     all_triplets_df.rename(columns={'anchor': 'cue', 'target1': 'choiceA', 'target2': 'choiceB'}, inplace=True)
     all_triplets_df.dropna(subset=['cue', 'choiceA', 'choiceB', 'chosen'], inplace=True)
-    
-    # Determine the word string of the human's choice
-    all_triplets_df['human_related_choice'] = np.where(
-        all_triplets_df['chosen'] == 1, 
-        all_triplets_df['choiceA'], 
-        all_triplets_df['choiceB']
-    )
+    all_triplets_df['human_choice_num'] = all_triplets_df['chosen'].astype(int)
+    all_triplets_df['human_related_choice'] = np.where(all_triplets_df['chosen'] == 1, all_triplets_df['choiceA'], all_triplets_df['choiceB'])
+
+    # If no lexicon path is provided, just sample the data and return the full vocab needed.
+    if lexicon_path is None:
+        sampled_df = all_triplets_df.sample(n=min(num_triplets_to_probe, len(all_triplets_df)), random_state=settings.GENERALIZE_DEFAULTS['random_seed'])
+        full_vocab = set(sampled_df['cue'].str.lower()).union(set(sampled_df['choiceA'].str.lower())).union(set(sampled_df['choiceB'].str.lower()))
+        return sampled_df, full_vocab
 
     print(f"Checking existing words in '{lexicon_path.name}'...")
     processed_words = set()
@@ -96,12 +98,7 @@ def get_3tt_data_for_analysis(lexicon_path: Path, num_triplets_to_probe: int):
                 try: processed_words.add(json.loads(line)['word'].lower())
                 except (json.JSONDecodeError, KeyError): continue
 
-    all_triplets_df['is_ready'] = all_triplets_df.apply(
-        lambda row: row['cue'].lower() in processed_words and \
-                    row['choiceA'].lower() in processed_words and \
-                    row['choiceB'].lower() in processed_words,
-        axis=1
-    )
+    all_triplets_df['is_ready'] = all_triplets_df.apply(lambda row: row['cue'].lower() in processed_words and row['choiceA'].lower() in processed_words and row['choiceB'].lower() in processed_words, axis=1)
     
     triplets_ready = all_triplets_df[all_triplets_df['is_ready'] == True]
     triplets_needing_generation = all_triplets_df[all_triplets_df['is_ready'] == False]

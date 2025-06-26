@@ -187,9 +187,12 @@ def evaluate_yoked_steering():
         sns.stripplot(data=axis_data, x='subgroup', y='Alignment', hue='Model Type', ax=ax, order=order,
                       jitter=0.2, dodge=True, alpha=0.1, palette=palette, legend=False)
 
-        # Plot the mean markers
-        sns.pointplot(data=axis_data, x='subgroup', y='Alignment', hue='Model Type', ax=ax, order=order,
-                      dodge=0.4, join=False, errwidth=0, markers="s", scale=1.0, palette=palette)
+        # <<< FIX: Replaced deprecated seaborn arguments >>>
+        sns.pointplot(
+            data=axis_data, x='subgroup', y='Alignment', hue='Model Type', ax=ax, order=order,
+            dodge=0.4, markers='s', markersize=6,
+            linestyle='none', err_kws={'linewidth': 0}, palette=palette
+        )
 
         ax.set_title(axis_name)
         ax.set_xlabel('')
