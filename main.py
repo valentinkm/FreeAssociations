@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.append(str(PROJECT_ROOT))
 
 try:
-    from src import settings, data_utils, llm_generation, analysis, profile_utils, experiment_runners, evaluation
+    from src import settings, data_utils, llm_generation, analysis, generalizability, profile_utils, experiment_runners, evaluation
 except ImportError as e:
     print(f"Error: Could not import necessary modules from 'src'. Details: {e}")
     print("Please ensure you have run 'pip install google-generativeai openai pandas seaborn matplotlib statsmodels tqdm'")
@@ -69,16 +69,16 @@ def handle_generalize(args):
     if args.type == 'spp':
         data, vocab = data_utils.get_spp_data_for_analysis(lexicon_path, args.ncues)
         vocab_needed_for_force = set(data['prime'].str.lower()).union(set(data['target'].str.lower())) if data is not None else set()
-    else: # 3tt
+    else:  # 3tt
         data, vocab = data_utils.get_3tt_data_for_analysis(lexicon_path, args.ncues)
         vocab_needed_for_force = set(data['cue'].str.lower()).union(set(data['choiceA'].str.lower())).union(set(data['choiceB'].str.lower())) if data is not None else set()
     if data is None: return
     if vocab or args.force_generate:
         llm_generation.generate_lexicon_data(vocab if not args.force_generate else vocab_needed_for_force, args.model, lexicon_path, args.nsets, args.prompt)
     if args.type == 'spp':
-        analysis.analyze_holistic_similarity(data, lexicon_path)
+        generalizability.analyze_holistic_similarity(data, lexicon_path)
     else:
-        analysis.analyze_3tt_similarity(data, lexicon_path)
+        generalizability.analyze_3tt_similarity(data, lexicon_path)
 
 def handle_generate(args):
     if args.type == "prompt-sweep":
@@ -93,7 +93,7 @@ def handle_evaluate(args):
     elif args.type == "yoked-steering":
         evaluation.evaluate_yoked_steering()
     elif args.type == "model-comparison":
-        analysis.compare_models_on_task(task=args.task)
+        generalizability.compare_models_on_task(task=args.task)
     elif args.type == "model-alignment":
         analysis.compare_model_alignment(models=args.models, nsets=args.nsets, ncues=args.ncues)
 
