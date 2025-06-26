@@ -1,5 +1,8 @@
-Small World of Words
+# Ignore Python cache
 *__pycache__*
+
+# Ignore raw data files
 data/SPP/Semantic Priming Trials.xlsx
-data/SWOW/SWOW-EN.complete.20180827.csvdata/SWOW/*.csv
+data/SWOW/SWOW-EN.complete.20180827.csv
+data/SWOW/*.csv
 data/SPP/*.xlsx
