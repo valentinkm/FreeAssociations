@@ -1,4 +1,5 @@
 Small World of Words
 *__pycache__*
-data/
-outputs/
+data/SPP/Semantic Priming Trials.xlsx
+data/SWOW/SWOW-EN.complete.20180827.csvdata/SWOW/*.csv
+data/SPP/*.xlsx
